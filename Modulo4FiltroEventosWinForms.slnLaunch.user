@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Novo Perfil",
+    "Projects": [
+      {
+        "Path": "Modulo4FiltroEventosWinForms.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "..\\..\\..\\..\\..\\..\\OneDrive\\Área de Trabalho\\Pratica3 - mockup modulo 1b\\Pratica2.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
