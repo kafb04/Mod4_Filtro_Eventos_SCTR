@@ -1,3 +1,5 @@
+using System.Windows.Forms;
+
 namespace Modulo4FiltroEventosWinForms
 {
     partial class Form1
@@ -17,49 +19,51 @@ namespace Modulo4FiltroEventosWinForms
         {
             this.components = new System.ComponentModel.Container();
 
-            this.cbParametro = new System.Windows.Forms.ComboBox();
-            this.cbOperador = new System.Windows.Forms.ComboBox();
-            this.cbIed = new System.Windows.Forms.ComboBox();
-            this.txtValor = new System.Windows.Forms.TextBox();
-            this.btnAdicionarRegra = new System.Windows.Forms.Button();
+            this.cbParametro = new ComboBox();
+            this.cbOperador = new ComboBox();
+            this.txtValor = new TextBox();
+            this.chkTodosIeds = new CheckBox();
+            this.nudIed = new NumericUpDown();
+            this.btnAdicionarRegra = new Button();
 
-            this.dgvRegras = new System.Windows.Forms.DataGridView();
-            this.colId = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colParametro = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colOperador = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colValor = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colIed = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colAtiva = new System.Windows.Forms.DataGridViewCheckBoxColumn();
-            this.colRemover = new System.Windows.Forms.DataGridViewButtonColumn();
+            this.dgvRegras = new DataGridView();
+            this.colId = new DataGridViewTextBoxColumn();
+            this.colParametro = new DataGridViewTextBoxColumn();
+            this.colOperador = new DataGridViewTextBoxColumn();
+            this.colValor = new DataGridViewTextBoxColumn();
+            this.colIed = new DataGridViewTextBoxColumn();
+            this.colAtiva = new DataGridViewCheckBoxColumn();
+            this.colRemover = new DataGridViewButtonColumn();
 
-            this.dgvPacotes = new System.Windows.Forms.DataGridView();
-            this.colPktTime = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colPktIed = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colPktIA = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colPktIB = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colPktIC = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.dgvPacotes = new DataGridView();
+            this.colPktTime = new DataGridViewTextBoxColumn();
+            this.colPktIed = new DataGridViewTextBoxColumn();
+            this.colPktIA = new DataGridViewTextBoxColumn();
+            this.colPktIB = new DataGridViewTextBoxColumn();
+            this.colPktIC = new DataGridViewTextBoxColumn();
 
-            this.lvContadores = new System.Windows.Forms.ListView();
-            this.colIedHdr = new System.Windows.Forms.ColumnHeader();
-            this.colEventosHdr = new System.Windows.Forms.ColumnHeader();
+            this.lvContadores = new ListView();
+            this.colIedHdr = new ColumnHeader();
+            this.colEventosHdr = new ColumnHeader();
 
-            this.lblTotalEventos = new System.Windows.Forms.Label();
-            this.txtLog = new System.Windows.Forms.TextBox();
+            this.lblTotalEventos = new Label();
+            this.txtLog = new TextBox();
 
             this.timerRelatorio = new System.Windows.Forms.Timer(this.components);
             this.timerMock = new System.Windows.Forms.Timer(this.components);
 
             ((System.ComponentModel.ISupportInitialize)(this.dgvRegras)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvPacotes)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.nudIed)).BeginInit();
             this.SuspendLayout();
 
-            // ===== Combos & Inputs (linha superior) =====
-            this.cbParametro.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            // ===== Top row =====
+            this.cbParametro.DropDownStyle = ComboBoxStyle.DropDownList;
             this.cbParametro.Location = new System.Drawing.Point(12, 12);
             this.cbParametro.Name = "cbParametro";
             this.cbParametro.Size = new System.Drawing.Size(90, 23);
 
-            this.cbOperador.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbOperador.DropDownStyle = ComboBoxStyle.DropDownList;
             this.cbOperador.Location = new System.Drawing.Point(108, 12);
             this.cbOperador.Name = "cbOperador";
             this.cbOperador.Size = new System.Drawing.Size(60, 23);
@@ -68,28 +72,38 @@ namespace Modulo4FiltroEventosWinForms
             this.txtValor.Name = "txtValor";
             this.txtValor.Size = new System.Drawing.Size(80, 23);
 
-            this.cbIed.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cbIed.Location = new System.Drawing.Point(260, 12);
-            this.cbIed.Name = "cbIed";
-            this.cbIed.Size = new System.Drawing.Size(100, 23);
+            this.chkTodosIeds.Location = new System.Drawing.Point(260, 13);
+            this.chkTodosIeds.Name = "chkTodosIeds";
+            this.chkTodosIeds.Size = new System.Drawing.Size(120, 19);
+            this.chkTodosIeds.Text = "Todos os IEDs";
+            this.chkTodosIeds.Checked = true;
+            this.chkTodosIeds.UseVisualStyleBackColor = true;
 
-            this.btnAdicionarRegra.Location = new System.Drawing.Point(366, 12);
+            this.nudIed.Location = new System.Drawing.Point(386, 12);
+            this.nudIed.Name = "nudIed";
+            this.nudIed.Size = new System.Drawing.Size(70, 23);
+            this.nudIed.Minimum = 1;
+            this.nudIed.Maximum = 100000;
+            this.nudIed.Value = 1;
+            this.nudIed.Enabled = false;
+
+            this.btnAdicionarRegra.Location = new System.Drawing.Point(462, 12);
             this.btnAdicionarRegra.Name = "btnAdicionarRegra";
             this.btnAdicionarRegra.Size = new System.Drawing.Size(122, 23);
             this.btnAdicionarRegra.Text = "Adicionar Regra";
             this.btnAdicionarRegra.UseVisualStyleBackColor = true;
             this.btnAdicionarRegra.Click += new System.EventHandler(this.btnAdicionarRegra_Click);
 
-            // ===== Grid de Regras =====
+            // ===== Rules grid =====
             this.dgvRegras.AllowUserToAddRows = false;
             this.dgvRegras.AllowUserToDeleteRows = false;
-            this.dgvRegras.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.dgvRegras.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvRegras.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            this.dgvRegras.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgvRegras.Location = new System.Drawing.Point(12, 45);
             this.dgvRegras.MultiSelect = false;
             this.dgvRegras.Name = "dgvRegras";
             this.dgvRegras.RowHeadersVisible = false;
-            this.dgvRegras.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.dgvRegras.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             this.dgvRegras.Size = new System.Drawing.Size(760, 150);
 
             this.colId.HeaderText = "Id";
@@ -127,24 +141,24 @@ namespace Modulo4FiltroEventosWinForms
             this.colRemover.UseColumnTextForButtonValue = true;
             this.colRemover.FillWeight = 10;
 
-            this.dgvRegras.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.dgvRegras.Columns.AddRange(new DataGridViewColumn[] {
                 this.colId, this.colParametro, this.colOperador, this.colValor, this.colIed, this.colAtiva, this.colRemover
             });
 
-            this.dgvRegras.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dgvRegras_CellContentClick);
-            this.dgvRegras.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.dgvRegras_CellValueChanged);
+            this.dgvRegras.CellContentClick += new DataGridViewCellEventHandler(this.dgvRegras_CellContentClick);
+            this.dgvRegras.CellValueChanged += new DataGridViewCellEventHandler(this.dgvRegras_CellValueChanged);
 
-            // ===== Grid de Pacotes (só correntes) =====
+            // ===== Packets grid =====
             this.dgvPacotes.AllowUserToAddRows = false;
             this.dgvPacotes.AllowUserToDeleteRows = false;
-            this.dgvPacotes.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.dgvPacotes.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvPacotes.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            this.dgvPacotes.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgvPacotes.Location = new System.Drawing.Point(12, 205);
             this.dgvPacotes.MultiSelect = false;
             this.dgvPacotes.Name = "dgvPacotes";
             this.dgvPacotes.ReadOnly = true;
             this.dgvPacotes.RowHeadersVisible = false;
-            this.dgvPacotes.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.dgvPacotes.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             this.dgvPacotes.Size = new System.Drawing.Size(760, 170);
 
             this.colPktTime.HeaderText = "Hora";
@@ -172,18 +186,18 @@ namespace Modulo4FiltroEventosWinForms
             this.colPktIC.ReadOnly = true;
             this.colPktIC.FillWeight = 20;
 
-            this.dgvPacotes.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.dgvPacotes.Columns.AddRange(new DataGridViewColumn[] {
                 this.colPktTime, this.colPktIed, this.colPktIA, this.colPktIB, this.colPktIC
             });
 
-            // ===== ListView de contadores por IED =====
+            // ===== Counters =====
             this.lvContadores.Location = new System.Drawing.Point(12, 385);
             this.lvContadores.Name = "lvContadores";
             this.lvContadores.Size = new System.Drawing.Size(300, 170);
             this.lvContadores.UseCompatibleStateImageBehavior = false;
-            this.lvContadores.View = System.Windows.Forms.View.Details;
+            this.lvContadores.View = View.Details;
             this.lvContadores.FullRowSelect = true;
-            this.lvContadores.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.lvContadores.Columns.AddRange(new ColumnHeader[] {
                 this.colIedHdr, this.colEventosHdr
             });
 
@@ -192,26 +206,22 @@ namespace Modulo4FiltroEventosWinForms
             this.colEventosHdr.Text = "Eventos";
             this.colEventosHdr.Width = 120;
 
-            // ===== Label total de eventos =====
             this.lblTotalEventos.AutoSize = true;
             this.lblTotalEventos.Location = new System.Drawing.Point(330, 385);
             this.lblTotalEventos.Name = "lblTotalEventos";
             this.lblTotalEventos.Size = new System.Drawing.Size(93, 15);
             this.lblTotalEventos.Text = "Total eventos: 0";
 
-            // ===== TextBox de Log (JSON gerado automaticamente) =====
             this.txtLog.Location = new System.Drawing.Point(470, 385);
             this.txtLog.Multiline = true;
-            this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.txtLog.ScrollBars = ScrollBars.Vertical;
             this.txtLog.Name = "txtLog";
-            this.txtLog.ReadOnly = false;
             this.txtLog.Size = new System.Drawing.Size(302, 170);
 
             // ===== Timers =====
-            this.timerRelatorio.Enabled = false; // ligado no Form1.cs
+            this.timerRelatorio.Enabled = false;
             this.timerRelatorio.Interval = 500;
-
-            this.timerMock.Enabled = false;     // ligado no Form1.cs
+            this.timerMock.Enabled = false;
             this.timerMock.Interval = 300;
 
             // ===== Form =====
@@ -219,13 +229,14 @@ namespace Modulo4FiltroEventosWinForms
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(784, 571);
             this.MinimumSize = new System.Drawing.Size(800, 610);
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.StartPosition = FormStartPosition.CenterScreen;
             this.Text = "Módulo 4 — Filtro de Eventos (Correntes)";
 
             this.Controls.Add(this.cbParametro);
             this.Controls.Add(this.cbOperador);
             this.Controls.Add(this.txtValor);
-            this.Controls.Add(this.cbIed);
+            this.Controls.Add(this.chkTodosIeds);
+            this.Controls.Add(this.nudIed);
             this.Controls.Add(this.btnAdicionarRegra);
 
             this.Controls.Add(this.dgvRegras);
@@ -237,41 +248,42 @@ namespace Modulo4FiltroEventosWinForms
 
             ((System.ComponentModel.ISupportInitialize)(this.dgvRegras)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvPacotes)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.nudIed)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
         }
 
         #endregion
 
-        // Controles de UI usados no Form1.cs
-        private System.Windows.Forms.ComboBox cbParametro;
-        private System.Windows.Forms.ComboBox cbOperador;
-        private System.Windows.Forms.ComboBox cbIed;
-        private System.Windows.Forms.TextBox txtValor;
-        private System.Windows.Forms.Button btnAdicionarRegra;
+        private ComboBox cbParametro;
+        private ComboBox cbOperador;
+        private TextBox txtValor;
+        private CheckBox chkTodosIeds;
+        private NumericUpDown nudIed;
+        private Button btnAdicionarRegra;
 
-        private System.Windows.Forms.DataGridView dgvRegras;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colId;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colParametro;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colOperador;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colValor;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colIed;
-        private System.Windows.Forms.DataGridViewCheckBoxColumn colAtiva;
-        private System.Windows.Forms.DataGridViewButtonColumn colRemover;
+        private DataGridView dgvRegras;
+        private DataGridViewTextBoxColumn colId;
+        private DataGridViewTextBoxColumn colParametro;
+        private DataGridViewTextBoxColumn colOperador;
+        private DataGridViewTextBoxColumn colValor;
+        private DataGridViewTextBoxColumn colIed;
+        private DataGridViewCheckBoxColumn colAtiva;
+        private DataGridViewButtonColumn colRemover;
 
-        private System.Windows.Forms.DataGridView dgvPacotes;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colPktTime;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colPktIed;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colPktIA;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colPktIB;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colPktIC;
+        private DataGridView dgvPacotes;
+        private DataGridViewTextBoxColumn colPktTime;
+        private DataGridViewTextBoxColumn colPktIed;
+        private DataGridViewTextBoxColumn colPktIA;
+        private DataGridViewTextBoxColumn colPktIB;
+        private DataGridViewTextBoxColumn colPktIC;
 
-        private System.Windows.Forms.ListView lvContadores;
-        private System.Windows.Forms.ColumnHeader colIedHdr;
-        private System.Windows.Forms.ColumnHeader colEventosHdr;
+        private ListView lvContadores;
+        private ColumnHeader colIedHdr;
+        private ColumnHeader colEventosHdr;
 
-        private System.Windows.Forms.Label lblTotalEventos;
-        private System.Windows.Forms.TextBox txtLog;
+        private Label lblTotalEventos;
+        private TextBox txtLog;
 
         private System.Windows.Forms.Timer timerRelatorio;
         private System.Windows.Forms.Timer timerMock;

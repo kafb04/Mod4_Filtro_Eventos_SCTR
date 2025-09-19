@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\karol\\OneDrive - Universidade Federal de Uberlândia\\Documentos\\UFU 2020-2\\10° Período\\Sistemas Computacionais em Tempo Real\\Modulo4FiltroEventosWinForms\\Modulo4FiltroEventosWinForms.csproj",
+      "projectUniqueName": "C:\\Users\\karol\\OneDrive - Universidade Federal de Uberlândia\\Documentos\\GitHub\\Mod4_Filtro_Eventos_SCTR\\Modulo4FiltroEventosWinForms.csproj",
       "projectName": "Modulo4FiltroEventosWinForms",
-      "projectPath": "C:\\Users\\karol\\OneDrive - Universidade Federal de Uberlândia\\Documentos\\UFU 2020-2\\10° Período\\Sistemas Computacionais em Tempo Real\\Modulo4FiltroEventosWinForms\\Modulo4FiltroEventosWinForms.csproj",
+      "projectPath": "C:\\Users\\karol\\OneDrive - Universidade Federal de Uberlândia\\Documentos\\GitHub\\Mod4_Filtro_Eventos_SCTR\\Modulo4FiltroEventosWinForms.csproj",
       "packagesPath": "C:\\Users\\karol\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\karol\\OneDrive - Universidade Federal de Uberlândia\\Documentos\\UFU 2020-2\\10° Período\\Sistemas Computacionais em Tempo Real\\Modulo4FiltroEventosWinForms\\obj\\",
+      "outputPath": "C:\\Users\\karol\\OneDrive - Universidade Federal de Uberlândia\\Documentos\\GitHub\\Mod4_Filtro_Eventos_SCTR\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
