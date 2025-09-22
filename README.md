@@ -1,10 +1,13 @@
 ﻿# Módulo 4 — Filtro de Eventos (WinForms)
 
+<div align="justify">
 Essa documentação apresenta o Módulo 4 do sistema supervisório de monitoramento de subestações, responsável pela filtragem dinâmica de parâmetros e detecção de 
 eventos em tempo real. O módulo captura continuamente medições de corrente (IA, IB e IC) enviadas pelo hardware via UDP em intervalos mínimos de 10ms, aplica 
 regras definidas pelos usuários para identificar ativações e desativações de eventos. Caso ocorra uma mudança de estado, o Módulo 4 gera um relatório em JSON 
 e o transmite ao módulo de monitoramento visual em até 500ms após a detecção.
+</div>
 
+---
 ## Visão Geral
 O Módulo 4 é um aplicativo **Windows Forms (.NET)** que:
 1. Recebe medições via **UDP** na porta **5002**.  
