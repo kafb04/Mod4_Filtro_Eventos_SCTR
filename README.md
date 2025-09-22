@@ -7,10 +7,6 @@ regras definidas pelos usuários para identificar ativações e desativações d
 e o transmite ao módulo de monitoramento visual em até 500 ms após a detecção.
 </div>
 
-<p align="center">
-  <img src="mod4.png" alt="Módulo 4 em funcionamento" width="600"/>
-</p>
-
 ---
 
 ## Visão Geral
@@ -39,6 +35,21 @@ O Módulo 4 é um aplicativo **Windows Forms (.NET)** que:
 - `Program.cs` instancia e executa `Form1`.  
 - `Form1.cs` utiliza os controles definidos em `Form1.Designer.cs`.  
 - `Form1.cs` usa `JsonMod3` para gerar o payload dos eventos em string e bytes.  
+
+---
+
+## Interface
+
+- A interface segue o layout definido no Designer:  
+  - **Grid** para listar, ativar/desativar e remover regras.  
+  - **ListView** com contadores por IED.  
+  - **Label** com o total de eventos.  
+  - **Textbox** (`txtLog`) mostrando o último JSON enviado.  
+- Atualizações são feitas por timers para não bloquear a UI.  
+
+<p align="center">
+  <img src="mod4.png" alt="Módulo 4 em funcionamento" width="600"/>
+</p>
 
 ---
 
@@ -132,16 +143,7 @@ public class RuleCondition
   2. Usa `JsonMod3` para gerar string (UI) e bytes (envio).  
   3. Publica os bytes no `_sendChannel`.  
 
----
 
-## Interface
-
-- A interface segue o layout definido no Designer:  
-  - **Grid** para listar, ativar/desativar e remover regras.  
-  - **ListView** com contadores por IED.  
-  - **Label** com o total de eventos.  
-  - **Textbox** (`txtLog`) mostrando o último JSON enviado.  
-- Atualizações são feitas por timers para não bloquear a UI.  
 
 ---
 
