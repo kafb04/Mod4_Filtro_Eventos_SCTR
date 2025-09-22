@@ -1,7 +1,5 @@
 ﻿# Módulo 4 — Filtro de Eventos (WinForms)
 
-Essa documentação descreve a **estrutura do código**, os **arquivos**  do módulo 4 e como se relacionam.  
-
 ---
 
 ## Visão Geral
