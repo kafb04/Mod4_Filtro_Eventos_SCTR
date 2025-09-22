@@ -7,11 +7,16 @@ regras definidas pelos usuários para identificar ativações e desativações d
 e o transmite ao módulo de monitoramento visual em até 500ms após a detecção.
 </div>
 
+<p align="center">
+  <img src="mod4.png" alt="Módulo 4 em funcionamento" width="600"/>
+</p>
+
+
 ---
 ## Visão Geral
 O Módulo 4 é um aplicativo **Windows Forms (.NET)** que:
 1. Recebe medições via **UDP** na porta **5002**.  
-2. Converte as amostras em objetos `Measurement`.  
+2. Converte as amostras em objetos `CurrentMeasurement`.  
 3. Avalia regras configuradas para os parâmetros **IA**, **IB** e **IC**.  
 4. Gera eventos quando uma condição é satisfeita.  
 5. Envia cada evento por **UDP unicast** para um destino definido no código.  
@@ -41,32 +46,32 @@ O Módulo 4 é um aplicativo **Windows Forms (.NET)** que:
 No topo de `Form1.cs`:
 
 ```csharp
-private const string mod3_ip   = "192.168.56.1";
-private const int    mod3_port = 6001;
-private static readonly IPEndPoint _mod3endpoint =
-    new IPEndPoint(IPAddress.Parse(mod3_ip), mod3_port);
+private const string mod3Ip   = "192.168.56.1";
+private const int    mod3Port = 6001;
+private static readonly IPEndPoint _mod3Endpoint =
+    new IPEndPoint(IPAddress.Parse(mod3Ip), mod3Port);
 ```
 
-- `mod3_ip` e `mod3_port` definem o destino dos eventos enviados.  
-- O envio é feito por **unicast** para `_mod3endpoint`.  
+- `mod3Ip` e `mod3Port` definem o destino dos eventos enviados.  
+- O envio é feito por **unicast** para `_mod3Endpoint`.  
 
 ---
 
 ## Principais Tipos
 
 ```csharp
-public enum Operator { Less, Equal, Greater }
+public enum ComparisonOperator { Less, Equal, Greater }
 
-public record Measurement(DateTime Timestamp, string IedId, double IA, double IB, double IC);
+public record CurrentMeasurement(DateTime Timestamp, string IedId, double IA, double IB, double IC);
 
-public class Rule
+public class RuleCondition
 {
     public int Id;
     public string Parameter;   // "IA" | "IB" | "IC"
-    public Operator Operator;  // < | = | >
+    public ComparisonOperator Operator;  // < | = | >
     public double Value;
     public bool Active;
-    public bool Verify(Measurement m); // compara o valor medido com a regra
+    public bool Verify(CurrentMeasurement m); // compara o valor medido com a regra
 }
 ```
 
@@ -75,32 +80,32 @@ public class Rule
 ## Fluxo de Dados
 
 ```
-[UDP 5002] → RunRxAsync → _rxchannel ─┐
-                                      ├→ RunFsmHybridAsync → EvaluateRulesWithTransitions
-                                      │                              │
-                                      │                              ├→ atualização dos contadores
-                                      │                              └→ TrySendEventToMod3
-                                      │                                         │
-                                      └──────────────────────────────────────────┴→ _txchannel → RunTxAsync → [UDP → mod3_ip:mod3_port]
+[UDP 5002] → RunReceiveLoopAsync → _receiveChannel ─┐
+                                                    ├→ RunProcessingLoopAsync → EvaluateRulesWithTransitions
+                                                    │                              │
+                                                    │                              ├→ atualização dos contadores
+                                                    │                              └→ TrySendEventToMod3
+                                                    │                                         │
+                                                    └──────────────────────────────────────────┴→ _sendChannel → RunSendLoopAsync → [UDP → mod3Ip:mod3Port]
 ```
 
 ---
 
 ## Threads e Canais
 
-- **RunRxAsync**  
+- **RunReceiveLoopAsync**  
   - Escuta pacotes em `0.0.0.0:5002` usando `UdpClient`.  
   - Recria automaticamente o socket em caso de inatividade.  
-  - Escreve as mensagens recebidas no canal `_rxchannel`.
+  - Escreve as mensagens recebidas no canal `_receiveChannel`.
 
-- **RunFsmHybridAsync**  
-  - Lê mensagens do `_rxchannel` a cada ~50 ms.  
+- **RunProcessingLoopAsync**  
+  - Lê mensagens do `_receiveChannel` a cada ~50 ms.  
   - Faz parsing de JSON (campos `idDispositivo`, `id`, `IedId`, `IA/IB/IC`) ou CSV (`IED,IA,IB,IC`).  
-  - Converte os dados em `Measurement` e aplica o motor de regras.  
-  - Chama `flushuibatch(...)`, que mantém a interface responsiva sem exibir pacotes detalhados.
+  - Converte os dados em `CurrentMeasurement` e aplica o motor de regras.  
+  - Chama `FlushUiBatch(...)`, que mantém a interface responsiva sem exibir pacotes detalhados.
 
-- **RunTxAsync**  
-  - Lê bytes do `_txchannel` e envia via `UdpClient.SendAsync` para `_mod3endpoint`.  
+- **RunSendLoopAsync**  
+  - Lê bytes do `_sendChannel` e envia via `UdpClient.SendAsync` para `_mod3Endpoint`.  
   - Realiza até 3 tentativas em caso de falha.  
   - Registra o último JSON enviado na interface.
 
@@ -108,7 +113,7 @@ public class Rule
 
 ## Motor de Regras
 
-- As regras são armazenadas em `List<Rule> _rules`, com acesso protegido por `lock`.  
+- As regras são armazenadas em `List<RuleCondition> _ruleList`, com acesso protegido por `lock`.  
 - O estado anterior de cada regra é registrado para detectar transições.  
 - Modos de disparo:
   - **Nível**: gera evento para cada amostra que satisfaz a regra.  
@@ -123,7 +128,7 @@ public class Rule
 - A função `TrySendEventToMod3(rule, measurement, active)`:
   1. Monta o filtro em texto (ex.: `"IA > 100"`).  
   2. Usa `JsonMod3` para gerar string (UI) e bytes (envio).  
-  3. Publica os bytes no `_txchannel`.  
+  3. Publica os bytes no `_sendChannel`.  
 
 ---
 
@@ -139,5 +144,5 @@ public class Rule
 ## Rede
 
 - **Recepção (RX):** escuta na porta UDP **5002**.  
-- **Transmissão (TX):** envia pacotes para `_mod3endpoint` (por padrão `192.168.56.1:6001`).  
+- **Transmissão (TX):** envia pacotes para `_mod3Endpoint` (por padrão `192.168.56.1:6001`).  
 - O envio é sempre unicast, evitando broadcast na rede.  

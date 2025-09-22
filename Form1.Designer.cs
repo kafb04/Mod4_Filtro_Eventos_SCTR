@@ -157,7 +157,7 @@ namespace Modulo4FiltroEventosWinForms
             this.ClientSize = new System.Drawing.Size(784, 561);
             this.MinimumSize = new System.Drawing.Size(800, 600);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Text = "Módulo 4 — Filtro de Eventos (Correntes)";
+            this.Text = "Módulo 4 — Filtro de Eventos";
 
             this.Controls.Add(this.cbParametro);
             this.Controls.Add(this.cbOperador);
