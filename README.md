@@ -2,17 +2,17 @@
 
 <div align="justify">
 Essa documentação apresenta o Módulo 4 do sistema supervisório de monitoramento de subestações, responsável pela filtragem dinâmica de parâmetros e detecção de 
-eventos em tempo real. O módulo captura continuamente medições de corrente (IA, IB e IC) enviadas pelo hardware via UDP em intervalos mínimos de 10ms, aplica 
+eventos em tempo real. O módulo captura continuamente medições de corrente (IA, IB e IC) enviadas pelo hardware via UDP em intervalos mínimos de 10 ms, aplica 
 regras definidas pelos usuários para identificar ativações e desativações de eventos. Caso ocorra uma mudança de estado, o Módulo 4 gera um relatório em JSON 
-e o transmite ao módulo de monitoramento visual em até 500ms após a detecção.
+e o transmite ao módulo de monitoramento visual em até 500 ms após a detecção.
 </div>
 
 <p align="center">
   <img src="mod4.png" alt="Módulo 4 em funcionamento" width="600"/>
 </p>
 
-
 ---
+
 ## Visão Geral
 O Módulo 4 é um aplicativo **Windows Forms (.NET)** que:
 1. Recebe medições via **UDP** na porta **5002**.  
@@ -20,7 +20,8 @@ O Módulo 4 é um aplicativo **Windows Forms (.NET)** que:
 3. Avalia regras configuradas para os parâmetros **IA**, **IB** e **IC**.  
 4. Gera eventos quando uma condição é satisfeita.  
 5. Envia cada evento por **UDP unicast** para um destino definido no código.  
-6. Exibe contadores por IED e o último JSON transmitido.
+6. Exibe contadores por IED e o último JSON transmitido.  
+7. Mantém o socket de recepção ativo mesmo em períodos de inatividade e faz **rebind automático em mudanças de rede** (Wi-Fi/VPN).  
 
 ---
 
@@ -29,8 +30,8 @@ O Módulo 4 é um aplicativo **Windows Forms (.NET)** que:
 ```
 /src
 ├─ Program.cs            # Bootstrap do WinForms (entrypoint)
-├─ Form1.cs              # Núcleo: RX/PROC/TX, motor de regras e integração UI
-├─ Form1.Designer.cs     # Layout da interface (controles, timers, etc.)
+├─ Form1.cs              # Núcleo: RX/PROC/TX, motor de regras, robustez de rede e integração UI
+├─ Form1.Designer.cs     # Layout da interface (controles, timers, grid de regras, listview de contadores)
 └─ JsonMod3.cs           # Classe auxiliar para montar o payload JSON de saída
 ```
 
@@ -95,7 +96,8 @@ public class RuleCondition
 
 - **RunReceiveLoopAsync**  
   - Escuta pacotes em `0.0.0.0:5002` usando `UdpClient`.  
-  - Recria automaticamente o socket em caso de inatividade.  
+  - Mantém o socket aberto mesmo em períodos de inatividade.  
+  - Recria o socket automaticamente em caso de erro real de rede ou quando ocorre mudança de rede (evento `NetworkChange.NetworkAddressChanged`).  
   - Escreve as mensagens recebidas no canal `_receiveChannel`.
 
 - **RunProcessingLoopAsync**  
@@ -134,10 +136,12 @@ public class RuleCondition
 
 ## Interface
 
-- A interface segue o layout definido no Designer.  
-- O campo `txtLog` mostra o último JSON enviado, atualizado a cada 500 ms.  
-- Os contadores por IED e o total são exibidos em uma `ListView`.  
-- Não há grade detalhada de pacotes recebidos, priorizando atualização em tempo real.
+- A interface segue o layout definido no Designer:  
+  - **Grid** para listar, ativar/desativar e remover regras.  
+  - **ListView** com contadores por IED.  
+  - **Label** com o total de eventos.  
+  - **Textbox** (`txtLog`) mostrando o último JSON enviado.  
+- Atualizações são feitas por timers para não bloquear a UI.  
 
 ---
 
@@ -146,3 +150,4 @@ public class RuleCondition
 - **Recepção (RX):** escuta na porta UDP **5002**.  
 - **Transmissão (TX):** envia pacotes para `_mod3Endpoint` (por padrão `192.168.56.1:6001`).  
 - O envio é sempre unicast, evitando broadcast na rede.  
+- Em caso de mudança de rede, o socket é reaberto automaticamente para manter a comunicação.  

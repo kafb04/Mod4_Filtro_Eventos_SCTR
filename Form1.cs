@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -112,6 +113,9 @@ namespace Modulo4FiltroEventosWinForms
         private readonly System.Windows.Forms.Timer _countersUpdateTimer = new System.Windows.Forms.Timer();
         private volatile bool _countersDirty = false;
 
+        // ===== Network-change rebind flag =====
+        private volatile bool _rebindRequested = false;
+
         public Form1()
         {
             InitializeComponent();
@@ -135,18 +139,20 @@ namespace Modulo4FiltroEventosWinForms
                 };
                 _countersUpdateTimer.Start();
 
-                // Send socket (unicast)
+                // Pre-warm sender (unicast)
                 try
                 {
                     _udpSender = new UdpClient();
                     _udpSender.Client.SendBufferSize = 1 << 20;
-                    // do not enable broadcast
                 }
                 catch { _udpSender = null; }
 
                 CreateReceiveSocket();
                 StartBackgroundWorkers();
                 _receiveWatch.Start();
+
+                // Rebind on network changes (Wi-Fi/VPN swap, etc.)
+                try { NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged; } catch { /* non-fatal */ }
             };
 
             // Graceful shutdown
@@ -154,6 +160,7 @@ namespace Modulo4FiltroEventosWinForms
             {
                 try
                 {
+                    try { NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged; } catch { }
                     try { timerRelatorio.Stop(); } catch { }
                     try { _countersUpdateTimer.Stop(); } catch { }
 
@@ -169,6 +176,12 @@ namespace Modulo4FiltroEventosWinForms
                 try { _udpReceiver?.Close(); _udpReceiver?.Dispose(); } catch { }
                 try { _udpSender?.Close(); _udpSender?.Dispose(); } catch { }
             };
+        }
+
+        private void OnNetworkAddressChanged(object? sender, EventArgs e)
+        {
+            // Sinaliza rebind seguro no loop de RX (evita fechar socket no callback de sistema)
+            _rebindRequested = true;
         }
 
         // ===== UI helpers =====
@@ -285,6 +298,9 @@ namespace Modulo4FiltroEventosWinForms
                 _udpReceiver.Client.Bind(new IPEndPoint(IPAddress.Any, _receivePort));
                 _udpReceiver.Client.Blocking = true;
 
+                // Optional: soft read timeout path (we also do Task.WhenAny)
+                try { _udpReceiver.Client.ReceiveTimeout = 0; } catch { }
+
                 _receiveErrorSeq = 0;
             }
             catch
@@ -308,6 +324,17 @@ namespace Modulo4FiltroEventosWinForms
             {
                 try
                 {
+                    // Rebind solicitado por evento de rede (Wi-Fi/VPN swap)
+                    if (_rebindRequested)
+                    {
+                        _rebindRequested = false;
+                        try { _udpReceiver?.Close(); _udpReceiver?.Dispose(); } catch { }
+                        _udpReceiver = null;
+                        CreateReceiveSocket();
+                        // pequena pausa para estabilizar
+                        await Task.Delay(50, ct);
+                    }
+
                     if (_udpReceiver is null)
                     {
                         _receiveErrorSeq = Math.Min(_receiveErrorSeq + 1, _receiveErrorSeqMax);
@@ -329,9 +356,8 @@ namespace Modulo4FiltroEventosWinForms
 
                     if (winner == timeoutTask)
                     {
-                        try { _udpReceiver?.Close(); _udpReceiver?.Dispose(); } catch { }
-                        _udpReceiver = null;
-                        await Task.Delay(100, ct);
+                        // *** FIX: não fechar o socket por ociosidade. ***
+                        _receiveWatch.Reset();
                         continue;
                     }
 
@@ -348,6 +374,7 @@ namespace Modulo4FiltroEventosWinForms
                 }
                 catch (SocketException)
                 {
+                    // Reabra somente em erro real de socket
                     try { _udpReceiver?.Close(); _udpReceiver?.Dispose(); } catch { }
                     _udpReceiver = null;
                     await Task.Delay(100, ct);
