@@ -7,7 +7,7 @@
         "Action": "Start"
       },
       {
-        "Path": "..\\..\\..\\..\\..\\..\\OneDrive\\Área de Trabalho\\Pratica3 - mockup modulo 1b\\Pratica2.csproj",
+        "Path": "..\\SimuladorMod3\\SimuladorMod3.csproj",
         "Action": "Start"
       }
     ]

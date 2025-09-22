@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Modulo4FiltroEventosWinForms")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9dbd7c0e3fad136888c7afde99c87db71684c0a7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a486dd76ecdd73a9b84259cf6d1e2bbbf78ce437")]
 [assembly: System.Reflection.AssemblyProductAttribute("Modulo4FiltroEventosWinForms")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Modulo4FiltroEventosWinForms")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

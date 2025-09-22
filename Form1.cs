@@ -25,13 +25,11 @@ namespace Modulo4FiltroEventosWinForms
         public string Parameter { get; set; } = "IA";
         public Operator Operator { get; set; } = Operator.Greater;
         public double Value { get; set; } = 300.0;
-        public string IedFilter { get; set; } = "Todos";
         public bool Active { get; set; } = true;
 
         public bool Verify(Measurement m)
         {
             if (!Active) return false;
-            if (IedFilter != "Todos" && m.IedId != IedFilter) return false;
 
             double x = Parameter switch
             {
@@ -53,22 +51,29 @@ namespace Modulo4FiltroEventosWinForms
 
     public partial class Form1 : Form
     {
-        private readonly int _receivePort = 5002;
-        private UdpClient? _udpRecv;
+        // ===== destino do módulo 3 =====
+        private const string mod3_ip = "192.168.56.1";
+        private const int mod3_port = 6001;
+        private static readonly IPEndPoint _mod3endpoint =
+            new IPEndPoint(IPAddress.Parse(mod3_ip), mod3_port);
 
-        private const string Mod3Host = "127.0.0.1";
-        private const int Mod3Port = 6001;
-        private UdpClient? _udpSend;
+        // ===== rede rx/tx =====
+        private readonly int _receiveport = 5002;
+        private UdpClient? _udprecv;
+        private UdpClient? _udpsend;
 
+        // ===== regras/estado =====
         private readonly List<Rule> _rules = new();
-        private int _nextRuleId = 1;
-        private readonly ConcurrentDictionary<string, int> _countersByIed = new();
-        private int _totalEvents = 0;
-        private readonly ConcurrentDictionary<(int rid, string ied), bool> _prevState = new();
+        private readonly object _ruleslock = new();
+        private int _nextruleid = 1;
+        private readonly ConcurrentDictionary<string, int> _countersbyied = new();
+        private int _totalevents = 0;
+        private readonly ConcurrentDictionary<(int rid, string ied), bool> _prevstate = new();
 
         private CancellationTokenSource _cts = new();
 
-        private readonly Channel<string> _rxChannel =
+        // ===== canais =====
+        private readonly Channel<string> _rxchannel =
             Channel.CreateBounded<string>(new BoundedChannelOptions(2048)
             {
                 SingleWriter = false,
@@ -76,7 +81,7 @@ namespace Modulo4FiltroEventosWinForms
                 FullMode = BoundedChannelFullMode.DropOldest
             });
 
-        private readonly Channel<byte[]> _txChannel =
+        private readonly Channel<byte[]> _txchannel =
             Channel.CreateBounded<byte[]>(new BoundedChannelOptions(2048)
             {
                 SingleWriter = false,
@@ -84,66 +89,96 @@ namespace Modulo4FiltroEventosWinForms
                 FullMode = BoundedChannelFullMode.DropOldest
             });
 
-        private Task? _rxTask;
-        private Task? _procTask;
-        private Task? _txTask;
+        // ===== workers =====
+        private Task? _rxtask;
+        private Task? _proctask;
+        private Task? _txtask;
 
-        private readonly TimeSpan _rxInactivity = TimeSpan.FromSeconds(2);
-        private readonly Stopwatch _rxWatch = new();
-        private int _rxErrorSeq = 0;
-        private const int _rxErrorSeqMax = 5;
-        private int _txErrorSeq = 0;
-        private const int _txRetryMax = 3;
+        // ===== robustez rx =====
+        private readonly TimeSpan _rxinactivity = TimeSpan.FromSeconds(2);
+        private readonly Stopwatch _rxwatch = new();
+        private int _rxerrorseq = 0;
+        private const int _rxerrorseqmax = 5;
+        private int _txerrorseq = 0;
+        private const int _txretrymax = 3;
 
-        private string _lastJson = "{\n}";
+        private string _lastjson = "{\n}";
         private readonly Random _rng = new();
-        private const bool USE_MOCK = false;
+
+        // ===== modo nível (filtragem contínua) =====
+        private readonly bool _leveltriggered = true;
+
+        // ===== debounce da ui (contadores) =====
+        private readonly System.Windows.Forms.Timer _timercounters = new System.Windows.Forms.Timer();
+        private volatile bool _countersdirty = false;
 
         public Form1()
         {
             InitializeComponent();
-            InitCombos();
+            initcombos();
 
-            dgvRegras.CurrentCellDirtyStateChanged += dgvRegras_CurrentCellDirtyStateChanged;
+            dgvRegras.CurrentCellDirtyStateChanged += dgvregras_currentcelldirtystatechanged;
 
-            timerRelatorio.Interval = 500;
-            timerRelatorio.Tick += timerRelatorio_Tick;
-            timerRelatorio.Start();
-
-            timerMock.Interval = 300;
-            if (USE_MOCK)
-                timerMock.Tick += (_, __) => GenerateMockMeasurement();
-
-            try
+            // inicia quando o form estiver visível
+            this.Shown += (s, e) =>
             {
-                _udpSend = new UdpClient();
-                _udpSend.Client.SendBufferSize = 1 << 20;
-            }
-            catch { _udpSend = null; }
+                timerRelatorio.Interval = 500;
+                timerRelatorio.Tick += timerrelatorio_tick;
+                timerRelatorio.Start();
 
-            CreateSocketRx();
-            StartWorkers();
-            _rxWatch.Start();
+                _timercounters.Interval = 200;
+                _timercounters.Tick += (s2, e2) =>
+                {
+                    if (!_countersdirty) return;
+                    _countersdirty = false;
+                    updatecountersui();
+                };
+                _timercounters.Start();
 
+                // socket de envio (unicast)
+                try
+                {
+                    _udpsend = new UdpClient();
+                    _udpsend.Client.SendBufferSize = 1 << 20;
+                    // não habilitar broadcast
+                }
+                catch { _udpsend = null; }
+
+                createsocketrx();
+                startworkers();
+                _rxwatch.Start();
+            };
+
+            // fechamento limpo
             this.FormClosing += async (s, e) =>
             {
                 try
                 {
+                    try { timerRelatorio.Stop(); } catch { }
+                    try { _timercounters.Stop(); } catch { }
+
                     _cts.Cancel();
                     await Task.WhenAll(
-                        _rxTask ?? Task.CompletedTask,
-                        _procTask ?? Task.CompletedTask,
-                        _txTask ?? Task.CompletedTask
+                        _rxtask ?? Task.CompletedTask,
+                        _proctask ?? Task.CompletedTask,
+                        _txtask ?? Task.CompletedTask
                     ).WaitAsync(TimeSpan.FromMilliseconds(300));
                 }
                 catch { }
 
-                try { _udpRecv?.Close(); _udpRecv?.Dispose(); } catch { }
-                try { _udpSend?.Close(); _udpSend?.Dispose(); } catch { }
+                try { _udprecv?.Close(); _udprecv?.Dispose(); } catch { }
+                try { _udpsend?.Close(); _udpsend?.Dispose(); } catch { }
             };
         }
 
-        private void InitCombos()
+        // ===== helpers de ui =====
+        private void ui(Action action)
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            try { BeginInvoke(action); } catch { }
+        }
+
+        private void initcombos()
         {
             cbParametro.Items.Clear();
             cbParametro.Items.AddRange(new object[] { "IA", "IB", "IC" });
@@ -152,15 +187,9 @@ namespace Modulo4FiltroEventosWinForms
             cbOperador.Items.Clear();
             cbOperador.Items.AddRange(new object[] { "<", "=", ">" });
             cbOperador.SelectedIndex = 2;
-
-            nudIed.Minimum = 1;
-            nudIed.Maximum = 100000;
-            nudIed.Value = 1;
-            nudIed.Enabled = !chkTodosIeds.Checked;
-            chkTodosIeds.CheckedChanged += (s, e) => nudIed.Enabled = !chkTodosIeds.Checked;
         }
 
-        private Operator ParseOperator(string symbol) =>
+        private Operator parseoperator(string symbol) =>
             symbol switch { "<" => Operator.Less, "=" => Operator.Equal, ">" => Operator.Greater, _ => Operator.Greater };
 
         private void btnAdicionarRegra_Click(object sender, EventArgs e)
@@ -177,19 +206,18 @@ namespace Modulo4FiltroEventosWinForms
 
             var r = new Rule
             {
-                Id = _nextRuleId++,
+                Id = _nextruleid++,
                 Parameter = cbParametro.SelectedItem?.ToString() ?? "IA",
-                Operator = ParseOperator(cbOperador.SelectedItem?.ToString() ?? ">"),
+                Operator = parseoperator(cbOperador.SelectedItem?.ToString() ?? ">"),
                 Value = val,
-                IedFilter = chkTodosIeds.Checked ? "Todos" : $"IED{nudIed.Value}",
                 Active = true
             };
 
-            _rules.Add(r);
-            AddRuleToGrid(r);
+            lock (_ruleslock) { _rules.Add(r); }
+            addrultogrid(r);
         }
 
-        private void AddRuleToGrid(Rule r)
+        private void addrultogrid(Rule r)
         {
             int row = dgvRegras.Rows.Add();
             var rr = dgvRegras.Rows[row];
@@ -197,11 +225,10 @@ namespace Modulo4FiltroEventosWinForms
             rr.Cells["colParametro"].Value = r.Parameter;
             rr.Cells["colOperador"].Value = r.Operator switch { Operator.Greater => ">", Operator.Equal => "=", _ => "<" };
             rr.Cells["colValor"].Value = r.Value;
-            rr.Cells["colIed"].Value = r.IedFilter;
             rr.Cells["colAtiva"].Value = r.Active;
         }
 
-        private void dgvRegras_CurrentCellDirtyStateChanged(object? sender, EventArgs e)
+        private void dgvregras_currentcelldirtystatechanged(object? sender, EventArgs e)
         {
             if (dgvRegras.IsCurrentCellDirty)
                 dgvRegras.CommitEdit(DataGridViewDataErrorContexts.Commit);
@@ -213,13 +240,14 @@ namespace Modulo4FiltroEventosWinForms
             if (dgvRegras.Columns[e.ColumnIndex].Name == "colRemover")
             {
                 int id = Convert.ToInt32(dgvRegras.Rows[e.RowIndex].Cells["colId"].Value);
-                var r = _rules.FirstOrDefault(x => x.Id == id);
-                if (r != null)
+                Rule? r;
+                lock (_ruleslock)
                 {
-                    ForceOffForRule(r); 
-                    _rules.Remove(r);
+                    r = _rules.FirstOrDefault(x => x.Id == id);
+                    if (r != null) _rules.Remove(r);
                 }
 
+                if (r != null) forceoffforrule(r);
                 dgvRegras.Rows.RemoveAt(e.RowIndex);
             }
         }
@@ -230,290 +258,310 @@ namespace Modulo4FiltroEventosWinForms
             if (dgvRegras.Columns[e.ColumnIndex].Name != "colAtiva") return;
 
             int id = Convert.ToInt32(dgvRegras.Rows[e.RowIndex].Cells["colId"].Value);
-            var r = _rules.FirstOrDefault(x => x.Id == id);
+            Rule? r; lock (_ruleslock) { r = _rules.FirstOrDefault(x => x.Id == id); }
             if (r is null) return;
 
             bool ativa = (bool)(dgvRegras.Rows[e.RowIndex].Cells["colAtiva"].Value ?? false);
             r.Active = ativa;
 
-            if (!ativa)
-                ForceOffForRule(r);
+            if (!ativa) forceoffforrule(r);
         }
 
-        private void CreateSocketRx()
+        // ===== sockets =====
+        private void createsocketrx()
         {
             try
             {
-                _udpRecv = new UdpClient(AddressFamily.InterNetwork);
-                _udpRecv.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                _udpRecv.EnableBroadcast = true;
-                _udpRecv.Client.ReceiveBufferSize = 1 << 20;
-                _udpRecv.Client.SendBufferSize = 1 << 20;
-                _udpRecv.Client.Bind(new IPEndPoint(IPAddress.Any, _receivePort));
-                _udpRecv.Client.Blocking = true;
-                _udpRecv.Client.ReceiveTimeout = 0;
-                _rxErrorSeq = 0;
+                _udprecv = new UdpClient(AddressFamily.InterNetwork);
+
+                // rebind estável
+                _udprecv.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, false);
+                _udprecv.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+
+                _udprecv.EnableBroadcast = true;
+                _udprecv.Client.ReceiveBufferSize = 1 << 20;
+                _udprecv.Client.SendBufferSize = 1 << 20;
+
+                _udprecv.Client.Bind(new IPEndPoint(IPAddress.Any, _receiveport));
+                _udprecv.Client.Blocking = true;
+
+                _rxerrorseq = 0;
             }
-            catch { _udpRecv = null; }
+            catch
+            {
+                _udprecv = null;
+            }
         }
 
-        private void StartWorkers()
+        private void startworkers()
         {
             var ct = _cts.Token;
-            _rxTask = Task.Run(() => RunRxAsync(ct), ct);
-            _procTask = Task.Run(() => RunFsmHybridAsync(_rxChannel.Reader, ct), ct);
-            _txTask = Task.Run(() => RunTxAsync(ct), ct);
+
+            _rxtask = Task.Run(() => runrxasync(ct), ct);
+            _proctask = Task.Run(() => runfsmhybridasync(_rxchannel.Reader, ct), ct);
+            _txtask = Task.Run(() => runtxasync(ct), ct);
         }
 
-        private async Task RunRxAsync(CancellationToken ct)
+        private async Task runrxasync(CancellationToken ct)
         {
             while (!ct.IsCancellationRequested && !IsDisposed)
             {
                 try
                 {
-                    if (_udpRecv is null)
+                    if (_udprecv is null)
                     {
-                        _rxErrorSeq = Math.Min(_rxErrorSeq + 1, _rxErrorSeqMax);
-                        int backoff = Math.Min(1000 * _rxErrorSeq, 5000);
-                        CreateSocketRx();
-                        if (_udpRecv is null)
+                        _rxerrorseq = Math.Min(_rxerrorseq + 1, _rxerrorseqmax);
+                        int backoff = Math.Min(200 * _rxerrorseq, 2000);
+                        createsocketrx();
+                        if (_udprecv is null)
                         {
                             await Task.Delay(backoff, ct);
                             continue;
                         }
                     }
 
-                    var result = await _udpRecv.ReceiveAsync().ConfigureAwait(false);
+                    var sock = _udprecv;
+                    if (sock is null) continue;
+
+                    var recvtask = sock.ReceiveAsync();
+                    var timeouttask = Task.Delay(_rxinactivity, ct);
+                    var winner = await Task.WhenAny(recvtask, timeouttask).ConfigureAwait(false);
+
+                    if (winner == timeouttask)
+                    {
+                        try { _udprecv?.Close(); _udprecv?.Dispose(); } catch { }
+                        _udprecv = null;
+                        await Task.Delay(100, ct);
+                        continue;
+                    }
+
+                    var result = await recvtask.ConfigureAwait(false);
                     string text = Encoding.UTF8.GetString(result.Buffer);
-                    await _rxChannel.Writer.WriteAsync(text, ct).ConfigureAwait(false);
-                    _rxWatch.Restart();
+                    await _rxchannel.Writer.WriteAsync(text, ct).ConfigureAwait(false);
+                    _rxwatch.Restart();
                 }
                 catch (OperationCanceledException) { break; }
+                catch (ObjectDisposedException)
+                {
+                    _udprecv = null;
+                    await Task.Delay(50, ct);
+                }
                 catch (SocketException)
                 {
-                    try { _udpRecv?.Close(); _udpRecv?.Dispose(); } catch { }
-                    _udpRecv = null;
-                    await Task.Delay(50, ct);
+                    try { _udprecv?.Close(); _udprecv?.Dispose(); } catch { }
+                    _udprecv = null;
+                    await Task.Delay(100, ct);
                 }
                 catch
                 {
-                    await Task.Delay(1, ct);
-                }
-
-                if (_rxWatch.Elapsed > _rxInactivity)
-                {
-                    try { _udpRecv?.Close(); _udpRecv?.Dispose(); } catch { }
-                    _udpRecv = null;
-                    _rxWatch.Restart();
+                    await Task.Delay(10, ct);
                 }
             }
         }
 
-        private async Task RunFsmHybridAsync(ChannelReader<string> rxReader, CancellationToken ct)
+        private async Task runfsmhybridasync(ChannelReader<string> rxreader, CancellationToken ct)
         {
             var tick = TimeSpan.FromMilliseconds(50);
             var buffer = new List<Measurement>(64);
 
             while (!ct.IsCancellationRequested && !IsDisposed)
             {
-                var readTask = rxReader.ReadAsync(ct).AsTask();
-                var delayTask = Task.Delay(tick, ct);
-                var winner = await Task.WhenAny(readTask, delayTask);
+                var readtask = rxreader.ReadAsync(ct).AsTask();
+                var delaytask = Task.Delay(tick, ct);
+                var winner = await Task.WhenAny(readtask, delaytask);
 
                 buffer.Clear();
 
-                if (winner == readTask)
+                if (winner == readtask)
                 {
-                    var raw = await readTask;
-                    if (TryParseMeasurement(raw, out var m1)) buffer.Add(m1);
-                    while (rxReader.TryRead(out var raw2))
-                        if (TryParseMeasurement(raw2, out var m2)) buffer.Add(m2);
+                    var raw = await readtask;
+                    if (tryparsemeasurement(raw, out var m1)) buffer.Add(m1);
+                    while (rxreader.TryRead(out var raw2))
+                        if (tryparsemeasurement(raw2, out var m2)) buffer.Add(m2);
                 }
 
                 if (buffer.Count > 0)
                 {
-                    foreach (var mm in buffer) EvaluateRulesWithTransitions(mm);
-                    FlushUIBatch(buffer);
+                    foreach (var mm in buffer) evaluateruleswithtransitions(mm);
+                    flushuibatch(buffer); // <- corrigido
                 }
             }
         }
 
-        private async Task RunTxAsync(CancellationToken ct)
+        private async Task runtxasync(CancellationToken ct)
         {
             while (!ct.IsCancellationRequested && !IsDisposed)
             {
                 byte[] bytes;
                 try
                 {
-                    bytes = await _txChannel.Reader.ReadAsync(ct).ConfigureAwait(false);
+                    bytes = await _txchannel.Reader.ReadAsync(ct).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) { break; }
 
                 bool ok = false;
-                for (int attempt = 0; attempt < _txRetryMax && !ok; attempt++)
+                for (int attempt = 0; attempt < _txretrymax && !ok; attempt++)
                 {
                     try
                     {
-                        _udpSend ??= new UdpClient();
-                        await _udpSend.SendAsync(bytes, bytes.Length, Mod3Host, Mod3Port);
+                        _udpsend ??= new UdpClient();
+                        var dest = _mod3endpoint; // snapshot
+                        await _udpsend.SendAsync(bytes, bytes.Length, dest);
                         ok = true;
-                        _txErrorSeq = 0;
+                        _txerrorseq = 0;
                     }
                     catch
                     {
-                        _txErrorSeq++;
+                        _txerrorseq++;
                         await Task.Delay(50 * (attempt + 1), ct);
                     }
                 }
 
                 if (!ok)
                 {
-                    try
+                    ui(() =>
                     {
-                        BeginInvoke(new Action(() =>
-                        {
-                            txtLog.Text = "{\n  \"status\": \"erro de envio (E11)\",\n  \"detalhe\": \"falha após tentativas\"\n}";
-                        }));
-                    }
-                    catch { }
+                        txtLog.Text = "{\n  \"status\": \"erro de envio (E11)\",\n  \"detalhe\": \"falha após tentativas\"\n}";
+                    });
                 }
             }
         }
 
-        private void FlushUIBatch(List<Measurement> buffer)
-        {
-            if (buffer.Count == 0) return;
-            var copy = buffer.ToArray();
+        // ======= no-op: removemos a grade de pacotes da ui =======
+        private void flushuibatch(List<Measurement> buffer) { }
 
-            try
+        private void updatecountersui()
+        {
+            ui(() =>
             {
-                BeginInvoke(new Action(() =>
+                lblTotalEventos.Text = $"Total eventos: {_totalevents}";
+                lvContadores.BeginUpdate();
+                lvContadores.Items.Clear();
+
+                foreach (var kv in _countersbyied.OrderBy(k => k.Key))
                 {
-                    foreach (var m in copy)
-                    {
-                        dgvPacotes.Rows.Add(m.Timestamp.ToString("HH:mm:ss"), m.IedId, m.IA, m.IB, m.IC);
-                        if (dgvPacotes.Rows.Count > 200)
-                            dgvPacotes.Rows.RemoveAt(0);
-                    }
-                }));
-            }
-            catch { }
+                    var it = new ListViewItem(kv.Key);
+                    it.SubItems.Add(kv.Value.ToString());
+                    lvContadores.Items.Add(it);
+                }
+
+                lvContadores.EndUpdate();
+            });
         }
 
-        private void UpdateCountersUI()
+        private void timerrelatorio_tick(object? sender, EventArgs e)
         {
-            lblTotalEventos.Text = $"Total eventos: {_totalEvents}";
-            lvContadores.BeginUpdate();
-            lvContadores.Items.Clear();
-
-            foreach (var kv in _countersByIed.OrderBy(k => k.Key))
-            {
-                var it = new ListViewItem(kv.Key);
-                it.SubItems.Add(kv.Value.ToString());
-                lvContadores.Items.Add(it);
-            }
-
-            lvContadores.EndUpdate();
+            txtLog.Text = _lastjson;
         }
 
-        private void timerRelatorio_Tick(object? sender, EventArgs e)
-        {
-            txtLog.Text = _lastJson;
-        }
-
-        private void EvaluateRulesWithTransitions(Measurement m)
+        private void evaluateruleswithtransitions(Measurement m)
         {
             bool changed = false;
 
-            foreach (var r in _rules)
+            Rule[] rulessnapshot;
+            lock (_ruleslock) { rulessnapshot = _rules.ToArray(); }
+
+            foreach (var r in rulessnapshot)
             {
                 if (!r.Active) continue;
-                if (r.IedFilter != "Todos" && r.IedFilter != m.IedId) continue;
 
                 bool now = r.Verify(m);
                 var key = (r.Id, m.IedId);
-                bool before = _prevState.TryGetValue(key, out var prev) && prev;
+                bool before = _prevstate.TryGetValue(key, out var prev) && prev;
 
-                if (now != before)
+                if (_leveltriggered)
                 {
-                    changed = true;
-                    _countersByIed.AddOrUpdate(m.IedId, 1, (_, v) => v + 1);
-                    TrySendEventToMod3(r, m, now);
+                    if (now)
+                    {
+                        trysendeventtomod3(r, m, true);
+                        _countersbyied.AddOrUpdate(m.IedId, 1, (_, v) => v + 1);
+                        changed = true;
+                    }
+                    _prevstate[key] = now;
                 }
-
-                _prevState[key] = now;
+                else
+                {
+                    if (now != before)
+                    {
+                        trysendeventtomod3(r, m, now);
+                        _countersbyied.AddOrUpdate(m.IedId, 1, (_, v) => v + 1);
+                        changed = true;
+                    }
+                    _prevstate[key] = now;
+                }
             }
 
             if (changed)
             {
-                Interlocked.Increment(ref _totalEvents);
-                try { BeginInvoke(new Action(UpdateCountersUI)); } catch { }
+                Interlocked.Increment(ref _totalevents);
+                _countersdirty = true; // debounce: ui atualiza no timer
             }
         }
 
-        private void TrySendEventToMod3(Rule r, Measurement m, bool active)
+        // ======= envio com fallback + log em caso de erro =======
+        private void trysendeventtomod3(Rule r, Measurement m, bool active)
         {
+            int idied = iedtoint(m.IedId);
+            string filter = makefilterstring(r);
+
             try
             {
-                int idIed = IedToInt(m.IedId);
-                string filter = MakeFilterString(r);
-
-                _lastJson = JsonMod3.BuildString(idIed, filter, active);
-                _txChannel.Writer.TryWrite(JsonMod3.BuildBytes(idIed, filter, active));
+                _lastjson = JsonMod3.BuildString(idied, filter, active);
+                var bytes = JsonMod3.BuildBytes(idied, filter, active);
+                _txchannel.Writer.TryWrite(bytes);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _lastjson = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    outputData = new { id_ied = idied, filter, active },
+                    err = "fallback",
+                    detail = ex.Message
+                }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+                ui(() => { try { txtLog.Text = _lastjson; } catch { } });
+
+                var fallback = Encoding.UTF8.GetBytes(_lastjson);
+                _txchannel.Writer.TryWrite(fallback);
+            }
         }
 
-        private void ForceOffForRule(Rule r)
+        private void forceoffforrule(Rule r)
         {
-            var toTurnOff = _prevState
+            var toturnoff = _prevstate
                 .Where(kv => kv.Key.rid == r.Id && kv.Value)
                 .Select(kv => kv.Key.ied)
                 .Distinct()
                 .ToList();
 
-            foreach (var ied in toTurnOff)
+            foreach (var ied in toturnoff)
             {
-                _prevState[(r.Id, ied)] = false;
-                _lastJson = JsonMod3.BuildString(IedToInt(ied), MakeFilterString(r), false);
-                _txChannel.Writer.TryWrite(JsonMod3.BuildBytes(IedToInt(ied), MakeFilterString(r), false));
-                _countersByIed.AddOrUpdate(ied, 1, (_, v) => v + 1);
+                _prevstate[(r.Id, ied)] = false;
+                _lastjson = JsonMod3.BuildString(iedtoint(ied), makefilterstring(r), false);
+                _txchannel.Writer.TryWrite(JsonMod3.BuildBytes(iedtoint(ied), makefilterstring(r), false));
+                _countersbyied.AddOrUpdate(ied, 1, (_, v) => v + 1);
             }
 
-            try { BeginInvoke(new Action(UpdateCountersUI)); } catch { }
+            _countersdirty = true;
         }
 
-        private void GenerateMockMeasurement()
-        {
-            var m = new Measurement(
-                DateTime.Now,
-                new[] { "IED1", "IED2", "IED3" }[_rng.Next(3)],
-                IA: Math.Round(_rng.NextDouble() * 500, 1),
-                IB: Math.Round(_rng.NextDouble() * 500, 1),
-                IC: Math.Round(_rng.NextDouble() * 500, 1)
-            );
-
-            EvaluateRulesWithTransitions(m);
-            FlushUIBatch(new List<Measurement> { m });
-        }
-
-        private static int IedToInt(string ied)
+        private static int iedtoint(string ied)
         {
             if (int.TryParse(ied, out var n)) return n;
             var digits = new string(ied.Where(char.IsDigit).ToArray());
             return int.TryParse(digits, out n) ? n : 0;
         }
 
-        private static string FormatNumber(double v) =>
+        private static string formatnumber(double v) =>
             v.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture);
 
-        private static string MakeFilterString(Rule r)
+        private static string makefilterstring(Rule r)
         {
             string op = r.Operator switch { Operator.Greater => ">", Operator.Less => "<", _ => "=" };
-            return $"{r.Parameter} {op} {FormatNumber(r.Value)}";
+            return $"{r.Parameter} {op} {formatnumber(r.Value)}";
         }
 
-        private static bool TryParseMeasurement(string raw, out Measurement measurement)
+        private static bool tryparsemeasurement(string raw, out Measurement measurement)
         {
             var ci = System.Globalization.CultureInfo.InvariantCulture;
             string s = raw?.Trim() ?? string.Empty;
@@ -559,15 +607,12 @@ namespace Modulo4FiltroEventosWinForms
             try
             {
                 var p = s.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
-                if (p.Length >= 4)
+                if (p.Length >= 4
+                    && double.TryParse(p[1], System.Globalization.NumberStyles.Float, ci, out var pa)
+                    && double.TryParse(p[2], System.Globalization.NumberStyles.Float, ci, out var pb)
+                    && double.TryParse(p[3], System.Globalization.NumberStyles.Float, ci, out var pc))
                 {
-                    measurement = new Measurement(
-                        DateTime.Now,
-                        p[0].Trim(),
-                        double.Parse(p[1], ci),
-                        double.Parse(p[2], ci),
-                        double.Parse(p[3], ci)
-                    );
+                    measurement = new Measurement(DateTime.Now, p[0].Trim(), pa, pb, pc);
                     return true;
                 }
             }

@@ -12,16 +12,16 @@ C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\UFU 202
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\UFU 2020-2\10° Período\Sistemas Computacionais em Tempo Real\Modulo4FiltroEventosWinForms\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.pdb
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\UFU 2020-2\10° Período\Sistemas Computacionais em Tempo Real\Modulo4FiltroEventosWinForms\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.genruntimeconfig.cache
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\UFU 2020-2\10° Período\Sistemas Computacionais em Tempo Real\Modulo4FiltroEventosWinForms\obj\Debug\net8.0-windows\ref\Modulo4FiltroEventosWinForms.dll
-C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.AssemblyInfoInputs.cache
-C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.AssemblyInfo.cs
-C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.csproj.CoreCompileInputs.cache
-C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.sourcelink.json
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\bin\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.exe
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\bin\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.deps.json
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\bin\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.runtimeconfig.json
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\bin\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.dll
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\bin\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.pdb
+C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.AssemblyInfoInputs.cache
+C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.AssemblyInfo.cs
+C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.csproj.CoreCompileInputs.cache
+C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.sourcelink.json
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.dll
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\refint\Modulo4FiltroEventosWinForms.dll
 C:\Users\karol\OneDrive - Universidade Federal de Uberlândia\Documentos\GitHub\Mod4_Filtro_Eventos_SCTR\obj\Debug\net8.0-windows\Modulo4FiltroEventosWinForms.pdb
