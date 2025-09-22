@@ -1,7 +1,5 @@
 ﻿# Módulo 4 — Filtro de Eventos (WinForms)
 
----
-
 ## Visão Geral
 O Módulo 4 é um aplicativo **Windows Forms (.NET)** que:
 1. Recebe medições via **UDP** na porta **5002**.  
