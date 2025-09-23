@@ -43,7 +43,7 @@ O Módulo 4 é um aplicativo **Windows Forms (.NET)** que:
 - A interface segue o layout definido no Designer:  
   - **Grid** para listar, ativar/desativar e remover regras.  
   - **ListView** com contadores por IED.  
-  - **Label** com o total de eventos.  
+  - **Labels** com o total de eventos e com a quantidade de pacotes recebidos por segundo.  
   - **Textbox** (`txtLog`) mostrando o último JSON enviado.  
 - Atualizações são feitas por timers para não bloquear a UI.  
 

@@ -37,6 +37,7 @@ namespace Modulo4FiltroEventosWinForms
             this.colEventosHdr = new ColumnHeader();
 
             this.lblTotalEventos = new Label();
+            this.lblPacketsPerSec = new Label();
             this.txtLog = new TextBox();
 
             this.timerRelatorio = new System.Windows.Forms.Timer(this.components);
@@ -137,7 +138,14 @@ namespace Modulo4FiltroEventosWinForms
             this.lblTotalEventos.Location = new System.Drawing.Point(330, 315);
             this.lblTotalEventos.Name = "lblTotalEventos";
             this.lblTotalEventos.Size = new System.Drawing.Size(93, 15);
-            this.lblTotalEventos.Text = "Total eventos: 0";
+            this.lblTotalEventos.Text = "Total events: 0";
+
+            // Packets/s label
+            this.lblPacketsPerSec.AutoSize = true;
+            this.lblPacketsPerSec.Location = new System.Drawing.Point(460, 315);
+            this.lblPacketsPerSec.Name = "lblPacketsPerSec";
+            this.lblPacketsPerSec.Size = new System.Drawing.Size(80, 15);
+            this.lblPacketsPerSec.Text = "Packets/s: 0";
 
             this.txtLog.Location = new System.Drawing.Point(330, 335);
             this.txtLog.Multiline = true;
@@ -168,6 +176,7 @@ namespace Modulo4FiltroEventosWinForms
 
             this.Controls.Add(this.lvContadores);
             this.Controls.Add(this.lblTotalEventos);
+            this.Controls.Add(this.lblPacketsPerSec);
             this.Controls.Add(this.txtLog);
 
             ((System.ComponentModel.ISupportInitialize)(this.dgvRegras)).EndInit();
@@ -195,6 +204,7 @@ namespace Modulo4FiltroEventosWinForms
         private ColumnHeader colEventosHdr;
 
         private Label lblTotalEventos;
+        private Label lblPacketsPerSec;
         private TextBox txtLog;
 
         private System.Windows.Forms.Timer timerRelatorio;

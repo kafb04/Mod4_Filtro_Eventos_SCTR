@@ -116,6 +116,11 @@ namespace Modulo4FiltroEventosWinForms
         // ===== Network-change rebind flag =====
         private volatile bool _rebindRequested = false;
 
+        // ===== Packets per second (PPS) =====
+        private int _packetsThisSecond = 0;
+        private int _lastPacketsPerSec = 0;
+        private readonly Stopwatch _ppsWatch = new();
+
         public Form1()
         {
             InitializeComponent();
@@ -151,11 +156,13 @@ namespace Modulo4FiltroEventosWinForms
                 StartBackgroundWorkers();
                 _receiveWatch.Start();
 
-                // Rebind on network changes (Wi-Fi/VPN swap, etc.)
+                // Start PPS measurement
+                _ppsWatch.Start();
+
+                // Rebind on network changes 
                 try { NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged; } catch { /* non-fatal */ }
             };
 
-            // Graceful shutdown
             this.FormClosing += async (s, e) =>
             {
                 try
@@ -180,7 +187,6 @@ namespace Modulo4FiltroEventosWinForms
 
         private void OnNetworkAddressChanged(object? sender, EventArgs e)
         {
-            // Sinaliza rebind seguro no loop de RX (evita fechar socket no callback de sistema)
             _rebindRequested = true;
         }
 
@@ -287,7 +293,6 @@ namespace Modulo4FiltroEventosWinForms
             {
                 _udpReceiver = new UdpClient(AddressFamily.InterNetwork);
 
-                // stable rebind
                 _udpReceiver.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, false);
                 _udpReceiver.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
@@ -298,7 +303,6 @@ namespace Modulo4FiltroEventosWinForms
                 _udpReceiver.Client.Bind(new IPEndPoint(IPAddress.Any, _receivePort));
                 _udpReceiver.Client.Blocking = true;
 
-                // Optional: soft read timeout path (we also do Task.WhenAny)
                 try { _udpReceiver.Client.ReceiveTimeout = 0; } catch { }
 
                 _receiveErrorSeq = 0;
@@ -331,7 +335,6 @@ namespace Modulo4FiltroEventosWinForms
                         try { _udpReceiver?.Close(); _udpReceiver?.Dispose(); } catch { }
                         _udpReceiver = null;
                         CreateReceiveSocket();
-                        // pequena pausa para estabilizar
                         await Task.Delay(50, ct);
                     }
 
@@ -356,7 +359,6 @@ namespace Modulo4FiltroEventosWinForms
 
                     if (winner == timeoutTask)
                     {
-                        // *** FIX: não fechar o socket por ociosidade. ***
                         _receiveWatch.Reset();
                         continue;
                     }
@@ -365,6 +367,8 @@ namespace Modulo4FiltroEventosWinForms
                     string text = Encoding.UTF8.GetString(result.Buffer);
                     await _receiveChannel.Writer.WriteAsync(text, ct).ConfigureAwait(false);
                     _receiveWatch.Restart();
+
+                    Interlocked.Increment(ref _packetsThisSecond);
                 }
                 catch (OperationCanceledException) { break; }
                 catch (ObjectDisposedException)
@@ -410,7 +414,6 @@ namespace Modulo4FiltroEventosWinForms
                 if (buffer.Count > 0)
                 {
                     foreach (var mm in buffer) EvaluateRulesWithTransitions(mm);
-                    FlushUiBatch(buffer); // no-op (grid removed from UI)
                 }
             }
         }
@@ -454,8 +457,7 @@ namespace Modulo4FiltroEventosWinForms
             }
         }
 
-        // ======= no-op: we removed the per-packet grid from UI =======
-        private void FlushUiBatch(List<CurrentMeasurement> buffer) { }
+
 
         private void UpdateCountersUI()
         {
@@ -479,6 +481,16 @@ namespace Modulo4FiltroEventosWinForms
         private void ReportTimer_Tick(object? sender, EventArgs e)
         {
             txtLog.Text = _lastJson;
+
+            // Atualiza o label de Packets/s a cada ~1s
+            if (_ppsWatch.ElapsedMilliseconds >= 1000)
+            {
+                _lastPacketsPerSec = _packetsThisSecond;
+                _packetsThisSecond = 0;
+                _ppsWatch.Restart();
+
+                lblPacketsPerSec.Text = $"Packets/s: {_lastPacketsPerSec}";
+            }
         }
 
         private void EvaluateRulesWithTransitions(CurrentMeasurement m)
@@ -521,7 +533,7 @@ namespace Modulo4FiltroEventosWinForms
             if (changed)
             {
                 Interlocked.Increment(ref _totalEvents);
-                _countersDirty = true; // UI updates on timer
+                _countersDirty = true; 
             }
         }
 
